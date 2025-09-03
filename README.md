@@ -1,8 +1,8 @@
 > [!CAUTION] This is a new but incomplete version of the program. Please proceed with caution and report any errors to Jaden Chilimigras at jchilim1@umbc.edu
 
-# Program Name here lol
+# QUEAP
 
-[Program name here] was designed as a user friendly option when analyzing data from the PicoQuant system in both modes (T2 and T3). Currently the program only handles data gathered in T2 mode - most of the current updates are finishing touches on the g2 measurement normalization and fitting functions. Please note the Overview below that goes in depth into the structure of the program and what each file does.
+QUEAP (Quantum Emitter Analysis Program) was designed as a user friendly option when analyzing data from the PicoQuant system in both modes (T2 and T3). Currently the program only handles data gathered in T2 mode - most of the current updates are finishing touches on the g2 measurement normalization and fitting functions. Please note the Overview below that goes in depth into the structure of the program and what each file does.
 
 ****************************
 
