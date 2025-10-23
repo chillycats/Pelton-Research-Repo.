@@ -6,7 +6,7 @@ DQE (Diagonistic program for Quantum Emitters) was designed as a user friendly o
 
 ## Version History
 
-The current version of DQE is able to handle data taken in T2 mode and analyse lifetime measurements with the proper normalization and fitting. 
+The current version of DQE is in a work in progress as I am currently working on reading in the data in T3 mode. 
 
 ****************************
 
