@@ -6,7 +6,7 @@ DQE (Diagonistic program for Quantum Emitters) was designed as a user friendly o
 
 ## Version History
 
-The current version of DQE is in a work in progress as I am currently working on reading in the data in T3 mode. 
+The current version of DQE is in a work in progress as I am currently working on reading in the data in T3 mode. Please see the resources folder for Matlab code provided by PicoQuant as a reference for the file format of the .ptu files specifically for the PicoHarp data system.
 
 ****************************
 
