@@ -14,9 +14,9 @@ Lifetime code file is provided as an preliminary example of what the program wil
 
 To perform a fitting on any set of data collected from the PicoHarp 300 you enter the following command into the terminal,
 
-'''
-python DQE-main.py --main-filepath [paste file path here]
-'''
+```py
+python DQE-main.py -main-filepath [paste file path here]
+```
 
 This command will run DQE with the default program settings that can be changed in the config file. If you are using DQE for the first time you will need to input your background measurement's filepath into the config file before you run the main program.
 
