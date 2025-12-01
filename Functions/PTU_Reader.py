@@ -51,7 +51,7 @@ isT2 = False                        # Flag indicating T2 mode (True) vs T3 mode 
 
 # Arrays to store the decoded data 
 photons = []      # List to store photon events
-photon_times = [] # List to store dtimes and true times
+photon_times = [] # List to store dtimes and true times (T3) or true times (T2)
 markers = []      # List to store marker events  
 overflows = []    # List to store overflow events
 
@@ -76,6 +76,9 @@ def readPTU(filepath):
     # If no filepath is given
     if filepath is None:
         raise ValueError('ERROR. No file path was given.')
+    
+    """if Path(filepath).suffix.lower() == '.dat':
+        return readDAT(filepath)"""
     
     # Reading binary file
     with open(filepath, 'rb') as file:
