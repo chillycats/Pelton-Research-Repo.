@@ -20,7 +20,7 @@ from Functions.PTU_Reader import readPTU
 from Functions.PTU_Normalize import T2_NLifetime
 from Functions.PTU_Trimmer import threshold_trim_function
 from Functions.PTU_Fitting import FitLifetime
-from Functions.PTU_Plotting import plots, comparison_plot
+from Functions.PTU_Plotting import plots, comparison_plot, rawPlot
 
 from config import MeasurementType, trimming_threshold
 from config import bckgrd_filepath, bckgrd_duration
@@ -119,130 +119,114 @@ if __name__ == '__main__':
         # - - - - - - - - - - - - - - -
         # Defining important constants
         # - - - - - - - - - - - - - - -
-        DATA = Mdata['photon_times']
-        Resolution = Mdata['metadata']['resolution']
+        DATA = Mdata['photon_times'] #
+        Resolution = Mdata['metadata']['resolution'] * 1E9 # in nanoseconds
         Photon_count = Mdata['statistics']['photons']
-        dtimes = [tup[0] for tup in DATA]
-        photon_times = [tup[1] for tup in DATA]
-        MeasurementDuration = Mdata['header']['MeasDesc_StopAt']
+        dtimes_ns = np.array([tup[0] for tup in DATA]) * Resolution # in nanoseconds
+        photon_times = [tup[1] for tup in DATA] # in nanoseconds
+
+        bin_width_ns = 25 / 1000 # in ns
+        time_window_ns = 50
+
+        # Create bins from 0 to time_window_ns
+        n_bins = int(time_window_ns / bin_width_ns)
+        bins = np.arange(0, time_window_ns + bin_width_ns, bin_width_ns)
+
+        # Create histogram
+        counts, bin_edges = np.histogram(dtimes_ns, bins=bins)
+        
+        # Calculate bin centers (for plotting)
+        bins = (bin_edges[:-1] + bin_edges[1:]) / 2
+        
+        MeasurementDuration = Mdata['header']['MeasDesc_AcquisitionTime'] * 1E6 # in nanoseconds
         DurationRatio = MeasurementDuration / bckgrd_duration
-
-        Offset_time = .02/(1E9*Resolution) 
-
-        # - - - - - - - - - - - - - - -
-        # Converting Data to Histogram
-        # - - - - - - - - - - - - - - -
-        data_step = 6
-        bin_size = data_step*Resolution
-        binstemp=np.arange(Offset_time, np.max(dtimes),data_step)
-
-        hist_n,hist_bins=np.histogram(dtimes,binstemp)
-
-        hist_bins_temp=np.zeros((len(hist_bins)-1,2))
-        hist_bins_temp[:,0]=hist_bins[1:]
-        
-        # take the midpoints of each time delay bin 
-        hist_bins_temp[:,0]=0.5*(hist_bins[:len(hist_bins)-1]+hist_bins_temp[:,0])
-        
-        # convert delay time bins to nanoseconds
-        hist_bins_temp[:,0]=hist_bins_temp[:,0]*(1E9*Resolution)
-        # put counts for each delay time into second column
-        hist_bins_temp[:,1]=hist_n
-        counts = hist_bins_temp[:,1] # photon counts
-        bins = hist_bins_temp[:,0]   # bin midpoints, delay times
-
-        # - - - - - - - - - - - - - - -
-        # Depending on Measurement Type
-        # - - - - - - - - - - - - - - -
-
-        if MeasurementType == 0:
-            print("No measurement type selected.")
-            print("")
-            print("Plotting data...")
-
-        elif MeasurementType == 1:
-            print("Lifetime measurement selected proceeding with normalization and fitting.")
-            print("="*60)
-
-            Ncounts = T2_NLifetime(counts, 0, DurationRatio)
-            NTcounts = threshold_trim_function(Ncounts, trimming_threshold)
-            time = np.arange(0, len(NTcounts) * Resolution*1E9, Resolution*1E9)
-
-            if LNumFits == 1:
-                Lfit1_dict = FitLifetime(NTcounts, time, Lfit1)
-                Figures.append(plots(Lfit1_dict['model_type'], time, NTcounts, Lfit1_dict['normalized_fit'], Lfit1_dict['residuals']))
-                
-            elif LNumFits == 2:
-                Lfit1_dict = FitLifetime(NTcounts, time, Lfit1)
-                Figures.append(plots(Lfit1_dict['model_type'], time, NTcounts, Lfit1_dict['normalized_fit'], Lfit1_dict['residuals']))
-                Lfit2_dict = FitLifetime(NTcounts, time, Lfit2)
-                Figures.append(plots(Lfit2_dict['model_type'], time, NTcounts, Lfit2_dict['normalized_fit'], Lfit2_dict['residuals']))
-                
-                Figures.append(comparison_plot(3, time, NTcounts, Lfit1_dict['model_type'], Lfit1_dict['normalized_fit'], Lfit2_dict['model_type'], Lfit2_dict['normalized_fit']))
-                
-
-            elif LNumFits == 3:
-                Lfit1_dict = FitLifetime(NTcounts, time, Lfit1)
-                Figures.append(plots(Lfit1_dict['model_type'], time, NTcounts, Lfit1_dict['normalized_fit'], Lfit1_dict['residuals']))
-                Lfit2_dict = FitLifetime(NTcounts, time, Lfit2)
-                Figures.append(plots(Lfit2_dict['model_type'], time, NTcounts, Lfit2_dict['normalized_fit'], Lfit2_dict['residuals']))
-                Lfit3_dict = FitLifetime(NTcounts, time, Lfit3)
-                Figures.append(plots(Lfit3_dict['model_type'], time, NTcounts, Lfit3_dict['normalized_fit'], Lfit3_dict['residuals']))
-
-                Figures.append(comparison_plot(3, time, NTcounts, Lfit1_dict['model_type'], Lfit1_dict['normalized_fit'], Lfit2_dict['model_type'], Lfit2_dict['normalized_fit'], Lfit3_dict['model_type'], Lfit3_dict['normalized_fit']))
-
-
-
-            plt.figure()
-            plt.plot(time,NTcounts,'o')
-            plt.yscale('log')
-            plt.xlabel('dtime, in ns')
-            plt.ylabel('intensity, counts')
-            plt.grid(True)
-
-
-        elif MeasurementType == 2:
-            print("g2 CW Autocorrelation measurement selected proceeding with normalization and fitting.")
-
-        elif MeasurementType == 3:
-            print("g2 Pulsed measurement selected proceeding with normalization and fitting.")
-
-        else:
-            raise ValueError('ERROR. MeasurementType not selected.')
-        
 
     # = = = = = = = = = = = = = = = = = = = = = = =
     #                   T2 MODE
     # = = = = = = = = = = = = = = = = = = = = = = =
     elif isT2 == True:
-        DATA = Mdata['photon_times']
+        bins = Mdata['tcspc']['time_axis']
+        counts = Mdata['tcspc']['histogram']
         Resolution = Mdata['metadata']['resolution']
-        MeasurementDuration = Mdata['header']['MeasDesc_StopAt']
-        DurationRatio = MeasurementDuration / bckgrd_duration
 
-        # - - - - - - - - - - - - - - -
-        # Depending on Measurement Type
-        # - - - - - - - - - - - - - - -
+    elif Path(filepath).suffix.lower() == '.dat':
+        Resolution = Mdata['metadata']['resolution']
+        photon_times = Mdata['photon_times']
+        bins = np.arange(0, len(photon_times)*Resolution, Resolution)
 
-        if MeasurementType == 0:
-            print("No measurement type selected.")
-            print("")
-            print("Plotting data...")
-
-        elif MeasurementType == 1:
-            print("Lifetime measurement selected proceeding with normalization and fitting.")
-
-        elif MeasurementType == 2:
-            print("g2 CW Autocorrelation measurement selected proceeding with normalization and fitting.")
-
-        elif MeasurementType == 3:
-            print("g2 Pulsed measurement selected proceeding with normalization and fitting.")
-
-        else:
-            raise ValueError('ERROR. MeasurementType not selected.')
-    
     else:
         raise ValueError('ERROR. isT2 variable not defined.')
+
+    # = = = = = = = = = = = = = = = = = = = = = = =
+    #         DETERMINING MEASUREMENT TYPE
+    # = = = = = = = = = = = = = = = = = = = = = = =
+
+    # - - - - - - - - - - - - - - -
+    #    No Measurement Selected
+    # - - - - - - - - - - - - - - -
+    if MeasurementType == 0:
+        print("No measurement type selected.")
+        print("Plotting data...")
+        print("="*60)
+
+        Figures.append(rawPlot(bins, counts))
+
+    # - - - - - - - - - - - - - - -
+    #     Lifetime Measurement
+    # - - - - - - - - - - - - - - -
+    elif MeasurementType == 1:
+        print("Lifetime measurement selected proceeding with normalization")
+        print("and fitting.")
+
+        # Normalizing and trimming counts then fixing len time array
+        Ncounts = T2_NLifetime(counts, 0, DurationRatio)
+        NTcounts, index = threshold_trim_function(Ncounts, trimming_threshold)
+        time = bins[:index]
+
+        # - - - - - - - - - - - - - - -
+        #      Fitting and Figures
+        # - - - - - - - - - - - - - - -
+        # Only one fit chosen
+        if LNumFits == 1:
+            Lfit1_dict = FitLifetime(NTcounts, time, Lfit1)
+            Figures.append(plots(Lfit1_dict['model_type'], time, NTcounts, Lfit1_dict['normalized_fit'], Lfit1_dict['residuals']))
+            
+        # Two fits chosen - adds a comparison plot figure
+        elif LNumFits == 2:
+            Lfit1_dict = FitLifetime(NTcounts, time, Lfit1)
+            Figures.append(plots(Lfit1_dict['model_type'], time, NTcounts, Lfit1_dict['normalized_fit'], Lfit1_dict['residuals']))
+            Lfit2_dict = FitLifetime(NTcounts, time, Lfit2)
+            Figures.append(plots(Lfit2_dict['model_type'], time, NTcounts, Lfit2_dict['normalized_fit'], Lfit2_dict['residuals']))
+            
+            Figures.append(comparison_plot(2, time, NTcounts, Lfit1_dict['model_type'], Lfit1_dict['normalized_fit'], Lfit2_dict['model_type'], Lfit2_dict['normalized_fit'], 1, 1))
+            
+        # Three fits are chosen
+        elif LNumFits == 3:
+            Lfit1_dict = FitLifetime(NTcounts, time, Lfit1)
+            Figures.append(plots(Lfit1_dict['model_type'], time, NTcounts, Lfit1_dict['normalized_fit'], Lfit1_dict['residuals']))
+            Lfit2_dict = FitLifetime(NTcounts, time, Lfit2)
+            Figures.append(plots(Lfit2_dict['model_type'], time, NTcounts, Lfit2_dict['normalized_fit'], Lfit2_dict['residuals']))
+            Lfit3_dict = FitLifetime(NTcounts, time, Lfit3)
+            Figures.append(plots(Lfit3_dict['model_type'], time, NTcounts, Lfit3_dict['normalized_fit'], Lfit3_dict['residuals']))
+
+            Figures.append(comparison_plot(3, time, NTcounts, Lfit1_dict['model_type'], Lfit1_dict['normalized_fit'], Lfit2_dict['model_type'], Lfit2_dict['normalized_fit'], Lfit3_dict['model_type'], Lfit3_dict['normalized_fit']))
+
+    # - - - - - - - - - - - - - - -
+    #       g2 CW Measurement
+    # - - - - - - - - - - - - - - -
+    elif MeasurementType == 2:
+        print("g2 CW Autocorrelation measurement selected proceeding with normalization and fitting.")
+
+    # - - - - - - - - - - - - - - -
+    #     g2 Pulsed Measurement
+    # - - - - - - - - - - - - - - -
+    elif MeasurementType == 3:
+        print("g2 Pulsed measurement selected proceeding with normalization and fitting.")
+
+
+    else:
+        raise ValueError('ERROR. MeasurementType not selected.')
+    
     
     pdf_filename = f"{output_filename}.pdf"
 

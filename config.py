@@ -11,7 +11,7 @@
 # 3 + g2 Pulsed
 # - - - - - - - - - - - - - - - - - 
 
-MeasurementType = 1
+MeasurementType = 0
 
 # Background File Information
 bckgrd_filepath = ''

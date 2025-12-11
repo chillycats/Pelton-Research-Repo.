@@ -44,4 +44,4 @@ def threshold_trim_function(normalized_data, threshold):
     trimmed_data = normalized_data[:index_counter]
 
     # returns np.ndarray of the trimmed normalized experimental data
-    return trimmed_data
+    return trimmed_data, index_counter

@@ -133,6 +133,7 @@ def FitLifetime(data, time, guesses):
     Residuals = data - Nfit
     Errors = np.sqrt(np.diag(pcov))
 
+    print("="*60)
     print("")
 
     print(f"{model} Parameters:")

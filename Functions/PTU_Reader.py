@@ -54,13 +54,35 @@ photons = []      # List to store photon events
 photon_times = [] # List to store dtimes and true times (T3) or true times (T2)
 markers = []      # List to store marker events  
 overflows = []    # List to store overflow events
-
+channel = []      # List to store channel number for T2 mode
 # Statistics counters
 photon_count = 0 
 overflow_count = 0
 marker_count = 0
 
-def readPTU(filepath):
+def readPTU(filepath, sync_channel=0, signal_channel=1, 
+            time_window_ns=50, bin_width_ps=25):
+    """
+    Read PTU file with optional TCSPC histogramming for T2 mode.
+    
+    Parameters:
+    -----------
+    filepath : str
+        Path to the PTU file
+    sync_channel : int (default=0)
+        Channel number for sync/reference (laser pulses) - T2 only
+    signal_channel : int (default=1)
+        Channel number for signal (detected photons) - T2 only
+    time_window_ns : float (default=50)
+        Time window for histogram in nanoseconds - T2 only
+    bin_width_ps : float (default=25)
+        Bin width in picoseconds - T2 only
+        
+    Returns:
+    --------
+    Dictionary containing all data with TCSPC histogram for T2 files
+    """
+    
     # Sets these variables/arrays as global variables
     global photons, markers, overflows
     global photon_count, overflow_count, marker_count
@@ -77,8 +99,8 @@ def readPTU(filepath):
     if filepath is None:
         raise ValueError('ERROR. No file path was given.')
     
-    """if Path(filepath).suffix.lower() == '.dat':
-        return readDAT(filepath)"""
+    if Path(filepath).suffix.lower() == '.dat':
+        return readDAT(filepath)
     
     # Reading binary file
     with open(filepath, 'rb') as file:
@@ -101,11 +123,20 @@ def readPTU(filepath):
         process_record_type()
         print("="*60)
 
+        # Variable to store T2 histogram data if applicable
+        t2_histogram_data = None
+        
         # Process all data records based on the identified format
         if TTResultFormat_TTTRRecType == rtPicoHarpT3:
             readT3(file)  # Read PicoHarp T3 data
+            result_type = 'T3'
+            
         elif TTResultFormat_TTTRRecType == rtPicoHarpT2:
-            readT2(file)  # Read PicoHarp T2 data
+            # CAPTURE THE RETURN VALUE from readT2
+            t2_histogram_data = readT2(file, sync_channel, signal_channel, 
+                                      time_window_ns, bin_width_ps)
+            result_type = 'T2'
+            
         else:
             # Add other formats here as needed
             raise ValueError(f"Unsupported record type: 0x{TTResultFormat_TTTRRecType:08X}")
@@ -116,40 +147,103 @@ def readPTU(filepath):
     print(f"Total records processed: {TTResult_NumberOfRecords}")
     print("="*60)
 
-    # Convert lists to numpy arrays for better performance
-    photons_array = np.array(photons, dtype=[
-        ('record_num', 'i4'), ('time_tag', 'i8'), ('channel', 'u1'), 
-        ('dtime', 'u2'), ('true_time', 'f8')
-    ]) if photons else np.array([])
-    
-    markers_array = np.array(markers, dtype=[
-        ('record_num', 'i4'), ('time_tag', 'i8'), ('markers', 'u1')
-    ]) if markers else np.array([])
-    
-    overflows_array = np.array(overflows, dtype=[
-        ('record_num', 'i4'), ('count', 'u2')
-    ]) if overflows else np.array([])
-    
-    # Return all data in a structured dictionary
-    return {
-        'header': Header_Data,
-        'metadata': {
-            'record_type': TTResultFormat_TTTRRecType,
-            'total_records': TTResult_NumberOfRecords,
-            'resolution': MeasDesc_Resolution,
-            'global_resolution': MeasDesc_GlobalResolution,
-            'is_t2_mode': isT2
-        },
-        'photons': photons_array,
-        'markers': markers_array, 
-        'overflows': overflows_array,
-        'photon_times': photon_times,
-        'statistics': {
-            'photons': photon_count,
-            'markers': marker_count,
-            'overflows': overflow_count
+    # Build the return dictionary based on result type
+    if result_type == 'T3':
+        # For T3, use global variables that were modified by readT3
+        photons_array = np.array(photons, dtype=[
+            ('record_num', 'i4'), ('time_tag', 'i8'), ('channel', 'u1'), 
+            ('dtime', 'u2'), ('true_time', 'f8')
+        ]) if photons else np.array([])
+        
+        markers_array = np.array(markers, dtype=[
+            ('record_num', 'i4'), ('time_tag', 'i8'), ('markers', 'u1')
+        ]) if markers else np.array([])
+        
+        overflows_array = np.array(overflows, dtype=[
+            ('record_num', 'i4'), ('count', 'u2')
+        ]) if overflows else np.array([])
+        
+        result_dict = {
+            'header': Header_Data,
+            'metadata': {
+                'record_type': TTResultFormat_TTTRRecType,
+                'total_records': TTResult_NumberOfRecords,
+                'resolution': MeasDesc_Resolution,
+                'global_resolution': MeasDesc_GlobalResolution,
+                'is_t2_mode': isT2
+            },
+            'photons': photons_array,
+            'markers': markers_array, 
+            'overflows': overflows_array,
+            'photon_times': photon_times,
+            'T2channel': channel,
+            'statistics': {
+                'photons': photon_count,
+                'markers': marker_count,
+                'overflows': overflow_count
+            }
         }
-    }
+        
+    elif result_type == 'T2':
+        # For T2, use the data returned by readT2
+        photons_array = np.array(t2_histogram_data['photons'], dtype=[
+            ('record_num', 'i4'), ('time_tag', 'i8'), ('channel', 'u1'), 
+            ('dtime', 'u2'), ('true_time', 'f8')
+        ]) if t2_histogram_data['photons'] else np.array([])
+        
+        markers_array = np.array(t2_histogram_data['markers'], dtype=[
+            ('record_num', 'i4'), ('time_tag', 'i8'), ('markers', 'u1')
+        ]) if t2_histogram_data['markers'] else np.array([])
+        
+        overflows_array = np.array(t2_histogram_data['overflows'], dtype=[
+            ('record_num', 'i4'), ('count', 'u2')
+        ]) if t2_histogram_data['overflows'] else np.array([])
+        
+        result_dict = {
+            'header': Header_Data,
+            'metadata': {
+                'record_type': TTResultFormat_TTTRRecType,
+                'total_records': TTResult_NumberOfRecords,
+                'resolution': MeasDesc_Resolution,
+                'global_resolution': MeasDesc_GlobalResolution,
+                'is_t2_mode': isT2
+            },
+            'photons': photons_array,
+            'markers': markers_array, 
+            'overflows': overflows_array,
+            'photon_times': t2_histogram_data['photon_times'],
+            'T2channel': t2_histogram_data['channel'],
+            'statistics': {
+                'photons': t2_histogram_data['photon_count'],
+                'markers': t2_histogram_data['marker_count'],
+                'overflows': t2_histogram_data['overflow_count']
+            },
+            # TCSPC HISTOGRAM DATA - THIS IS WHAT YOU WANT!
+            'tcspc': {
+                'histogram': t2_histogram_data['histogram'],
+                'time_axis': t2_histogram_data['time_axis'],
+                'histogrammed_photons': t2_histogram_data['histogrammed_photons'],
+                'sync_times': t2_histogram_data['sync_times'],
+                'signal_times': t2_histogram_data['signal_times'],
+                'parameters': {
+                    'sync_channel': t2_histogram_data['sync_channel'],
+                    'signal_channel': t2_histogram_data['signal_channel'],
+                    'time_window_ns': t2_histogram_data['time_window_ns'],
+                    'bin_width_ps': t2_histogram_data['bin_width_ps'],
+                    'n_bins': t2_histogram_data['n_bins']
+                },
+                'statistics': {
+                    'sync_rate_MHz': t2_histogram_data['sync_rate_MHz'],
+                    'photon_rate_MHz': t2_histogram_data['photon_rate_MHz'],
+                    'counts_per_sync': t2_histogram_data['counts_per_sync'],
+                    'n_sync_pulses': t2_histogram_data['n_sync_pulses'],
+                    'n_signal_photons': t2_histogram_data['n_signal_photons'],
+                    'histogramming_efficiency': t2_histogram_data['histogramming_efficiency']
+                }
+            }
+        }
+    
+    return result_dict
 
 def readHeader(file):
     """
@@ -414,7 +508,7 @@ def readT3(file):
         
         record_num += 1
 
-def readT2(file):
+def readT2(file, sync_channel=0, signal_channel=1, time_window_ns=50, bin_width_ps=25):
     """
     Read PicoHarp T2 format data into memory arrays.
     
@@ -432,44 +526,92 @@ def readT2(file):
     - If markers>0: Marker event (external trigger)
     """
 
-    global photons, markers, overflows, photon_count, overflow_count, marker_count, photon_times
+    # Initialize all variables (same as original)
+    ofltime = 0
+    WRAPAROUND = 210698240
+    record_num = 0
     
-    ofltime = 0           # Overflow correction for T2time
-    WRAPAROUND = 210698240  # T2time counter wraps at this value (as per MATLAB code)
-    record_num = 0        # Current record number
-
-    # Process each record in the file
+    # Original data structures
+    photons = []
+    markers = []
+    overflows = []
+    photon_count = 0
+    overflow_count = 0
+    marker_count = 0
+    photon_times = []
+    channel = []
+    
+    # NEW: For histogramming
+    sync_times = []           # Absolute times of all sync pulses (ns)
+    signal_times = []         # Absolute times of all signal photons (ns)
+    last_sync_time_ns = None  # Most recent sync time for histogramming
+    
+    # Histogram parameters
+    bin_width_ns = bin_width_ps / 1000  # Convert ps to ns
+    n_bins = int(time_window_ns / bin_width_ns)
+    histogram = np.zeros(n_bins, dtype=np.int64)
+    histogrammed_photons = 0
+    sync_to_photon_times = []  # Store individual delay times for debugging
+    
+    # Process each record in a single pass
     for i in range(TTResult_NumberOfRecords):
         # Read 32-bit record
         t2_record = struct.unpack('I', file.read(4))[0]
         
-        # Extract components using bit operations
+        # Extract components
         t2time = t2_record & 0xFFFFFFF        # Lower 28 bits: time tag
         chan = (t2_record >> 28) & 0xF        # Upper 4 bits: channel
         
-        # Apply overflow correction to get absolute time
+        # Apply overflow correction to get absolute time tag
         timetag = ofltime + t2time
-
+        
+        # Store original data structures (your existing code)
         if 0 <= chan <= 4:
-            # =============================================================
-            # PHOTON EVENT: Regular photon detection on channels 0-4
-            # =============================================================
-            true_time = timetag * MeasDesc_GlobalResolution * 1e9  # Convert to nanoseconds
-
-            photon_times.append(true_time)
-
+            # Convert to absolute time in nanoseconds
+            true_time_ns = timetag * MeasDesc_GlobalResolution * 1e9
+            
+            # Store in original structures
+            photon_times.append(true_time_ns)
+            channel.append(chan)
             photons.append((
                 record_num,     # Record number in file
                 timetag,        # Absolute time tag value
                 chan,           # Channel (0-4)
                 0,              # Dtime is 0 for T2 mode (not applicable)
-                true_time       # Absolute time in nanoseconds
+                true_time_ns    # Absolute time in nanoseconds
             ))
             photon_count += 1
-
+            
+            # =============================================================
+            # SINGLE-PASS HISTOGRAMMING
+            # =============================================================
+            if chan == sync_channel:
+                # Store sync time and update most recent sync
+                sync_times.append(true_time_ns)
+                last_sync_time_ns = true_time_ns
+                
+            elif chan == signal_channel:
+                # Store signal photon time
+                signal_times.append(true_time_ns)
+                
+                # If we have a sync pulse reference, histogram this photon
+                if last_sync_time_ns is not None:
+                    # Calculate time since last sync pulse
+                    time_since_sync = true_time_ns - last_sync_time_ns
+                    
+                    # Store for debugging/analysis
+                    sync_to_photon_times.append(time_since_sync)
+                    
+                    # Check if within histogram window (positive and bounded)
+                    if 0 <= time_since_sync < time_window_ns:
+                        bin_idx = int(time_since_sync / bin_width_ns)
+                        if bin_idx < n_bins:
+                            histogram[bin_idx] += 1
+                            histogrammed_photons += 1
+                
         elif chan == 15:
             # =============================================================
-            # SPECIAL RECORD: Either overflow or marker
+            # SPECIAL RECORD: Either overflow or marker (your existing code)
             # =============================================================
             markers_val = t2_record & 0xF  # Marker bits (lowest 4 bits)
             
@@ -501,3 +643,162 @@ def readT2(file):
             print(f"Warning: Unknown channel {chan} at record {record_num}")
         
         record_num += 1
+    
+    # Create time axis for the histogram
+    time_axis = np.arange(n_bins) * bin_width_ns + bin_width_ns/2  # Center of bins
+    
+    # Calculate statistics
+    total_time_ns = 0
+    if len(sync_times) > 0 and len(signal_times) > 0:
+        total_time_ns = max(sync_times[-1], signal_times[-1]) if signal_times else sync_times[-1]
+    
+    sync_rate = (len(sync_times) / total_time_ns * 1e9) if total_time_ns > 0 else 0
+    photon_rate = (len(signal_times) / total_time_ns * 1e9) if total_time_ns > 0 else 0
+    counts_per_sync = len(signal_times) / len(sync_times) if len(sync_times) > 0 else 0
+    
+    # Return complete dataset
+    return {
+        # Original data (same as your function)
+        'photons': photons,
+        'markers': markers,
+        'overflows': overflows,
+        'photon_times': photon_times,
+        'channel': channel,
+        'photon_count': photon_count,
+        'overflow_count': overflow_count,
+        'marker_count': marker_count,
+        
+        # New data for histogramming
+        'sync_times': sync_times,
+        'signal_times': signal_times,
+        'sync_to_photon_times': sync_to_photon_times,
+        
+        # Histogram data
+        'histogram': histogram,
+        'time_axis': time_axis,
+        'histogrammed_photons': histogrammed_photons,
+        'total_histogram_counts': histogram.sum(),
+        
+        # Parameters
+        'sync_channel': sync_channel,
+        'signal_channel': signal_channel,
+        'time_window_ns': time_window_ns,
+        'bin_width_ps': bin_width_ps,
+        'n_bins': n_bins,
+        
+        # Statistics
+        'sync_rate_MHz': sync_rate,
+        'photon_rate_MHz': photon_rate,
+        'counts_per_sync': counts_per_sync,
+        'total_time_ns': total_time_ns,
+        'n_sync_pulses': len(sync_times),
+        'n_signal_photons': len(signal_times),
+        'histogramming_efficiency': (histogrammed_photons / len(signal_times) if len(signal_times) > 0 else 0),
+    }
+
+def readDAT(file):
+    """
+    Read .dat file format where:
+    - First 10 lines are header information
+    - Remaining lines are photon counts
+    
+    Args:
+        filepath: Path to the .dat file
+        
+    Returns:
+        Dictionary with similar structure to PTU data for consistency
+    """
+
+    print("="*60)
+    print("HEADER INFORMATION")
+    print("="*60)
+
+    Header_Data = {}
+
+    with open(file, "r") as file:
+        # Read and parse the header lines
+        first_line = file.readline().split()
+        if len(first_line) >= 7:
+            Header_Data['HW_Type'] = f"{first_line[0]} {first_line[1]}"
+            Header_Data['File_CreatingDate'] = first_line[4]
+            Header_Data['File_CreatingTime'] = f"{first_line[5]} {first_line[6]}"
+        
+        # Skip empty line
+        file.readline()
+        
+        # Read channels per curve
+        channels_line = file.readline().strip()
+        Header_Data['Channels_Per_Curve'] = int(channels_line) if channels_line.isdigit() else channels_line
+        
+        # Skip empty line  
+        file.readline()
+        
+        # Read display curve number
+        display_curve_line = file.readline().strip()
+        Header_Data['Display_Curve_no'] = int(display_curve_line) if display_curve_line.isdigit() else display_curve_line
+        
+        # Skip empty line
+        file.readline()
+        
+        # Read memory block number
+        memory_block_line = file.readline().strip()
+        Header_Data['Memory_Block_no'] = int(memory_block_line) if memory_block_line.isdigit() else memory_block_line
+        
+        # Skip empty line
+        file.readline()
+        
+        # Read NS per channel
+        ns_channel_line = file.readline().strip()
+        Header_Data['NS_Per_Channel'] = float(ns_channel_line) if ns_channel_line.replace('.', '').isdigit() else ns_channel_line
+        
+        # Additional header fields to match PTU format
+        Header_Data['File_Comment'] = 'DAT File Converted'
+        Header_Data['Measurement_Mode'] = 2  # .dat files are usually in T2 mode
+        Header_Data['TTResultFormat_TTTRRecType'] = 'DAT_FILE'
+        Header_Data['TTResultFormat_BitsPerRecord'] = 32
+        Header_Data['MeasDesc_Resolution'] = Header_Data.get('NS_Per_Channel', 1.0)
+        Header_Data['MeasDesc_GlobalResolution'] = Header_Data.get('NS_Per_Channel', 1.0)
+        Header_Data['MeasDesc_AcquisitionTime'] = 0  
+        Header_Data['TTResult_NumberOfRecords'] = 0  
+
+        # Print header information
+        for key, value in Header_Data.items():
+            if isinstance(value, str):
+                print(f"{key:<35} '{value}'")
+            elif isinstance(value, (int, float)):
+                print(f"{key:<35} {value}")
+            else:
+                print(f"{key:<35} {value}")
+        print("="*60)
+
+        isT2 = 0
+        photon_times = np.loadtxt(file, unpack=True, skiprows=10)
+        photon_times = np.trim_zeros(photon_times)
+        
+        # Since this is .dat file and in T2 mode these values are not recorded in this format
+        photon_count = 'N/A'
+        marker_count = 'N/A'
+        overflow_count = 'N/A'
+        photons_array = []
+        markers_array = []
+        overflows_array = []
+
+        return {
+        'header': Header_Data,
+        'metadata': {
+            'record_type': TTResultFormat_TTTRRecType,
+            'total_records': TTResult_NumberOfRecords,
+            'resolution': MeasDesc_Resolution,
+            'global_resolution': MeasDesc_GlobalResolution,
+            'is_t2_mode': isT2
+            },
+        'photons': photons_array,
+        'markers': markers_array, 
+        'overflows': overflows_array,
+        'photon_times': photon_times,
+        'statistics': {
+            'photons': photon_count,
+            'markers': marker_count,
+            'overflows': overflow_count
+        }
+        }
