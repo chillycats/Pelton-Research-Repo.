@@ -4,7 +4,10 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import os
 
+# Lifetime Fit
 from Functions.plotting_config import LExp, LBiExp, LTriExp
+# Pulsed Fit 
+from Functions.plotting_config import PExp, CWExp
 
 
 def plots(model, time_array, main_data, fitted_data, residuals):
@@ -29,6 +32,11 @@ def plots(model, time_array, main_data, fitted_data, residuals):
         PlotInfo = LBiExp
     elif model == 'Tri-Exponential Fit':
         PlotInfo = LTriExp
+    # g2 Models
+    elif model == 'g2 Pulsed Fit':
+        PlotInfo = PExp
+    elif model == 'CW Autocorrelation Fit':
+        PlotInfo = CWExp
 
     # Plotting - upper is the fitted data and main data vs. time, lower - residuals plot
     gs_kw = dict(height_ratios=[2,1]) # determines the height ratio s.t. the residuals are below and smaller than the upper plot
@@ -89,6 +97,9 @@ def comparison_plot(num_of_fits, time_array, main_data, model1, fit1, model2, fi
             PlotInfos.append(LBiExp)
         elif models[i] == 'Tri-Exponential Fit':
             PlotInfos.append(LTriExp)
+        # g2 Pulsed Models
+        elif models[i] == 'g2 Pulsed Fit':
+            PlotInfos.append(PExp)
     
      # plotting the comparison plot
     fig4, comparison_plot = plt.subplots(figsize = (12,6))
@@ -104,8 +115,6 @@ def comparison_plot(num_of_fits, time_array, main_data, model1, fit1, model2, fi
 
     return fig4
 
-
-
 def rawPlot(time_array, main_data):
     """
     rawPlot
@@ -118,13 +127,13 @@ def rawPlot(time_array, main_data):
     it assigns all the correct labels it will plot each of the fits. If there is only one fit then the function will not plot anything and will return.
     """
      # plotting the comparison plot
-    fig, comparison_plot = plt.subplots(figsize = (12,6))
+    fig, rawplot = plt.subplots(figsize = (12,6))
 
-    comparison_plot.plot(time_array, main_data, color = 'black', label = 'Non-Normalized Data')
-    comparison_plot.set_yscale("log")
-    comparison_plot.legend()
-    comparison_plot.set_xlabel("Delay Time (ns)")
-    comparison_plot.set_ylabel("Non-Normalized Data")
-    comparison_plot.set_title("Non-Normalized Plot of Data")
+    rawplot.plot(time_array, main_data, color = 'black', label = 'Non-Normalized Data')
+    rawplot.set_yscale("log")
+    rawplot.legend()
+    rawplot.set_xlabel("Delay Time (ns)")
+    rawplot.set_ylabel("Non-Normalized Data")
+    rawplot.set_title("Non-Normalized Plot of Data")
 
     return fig

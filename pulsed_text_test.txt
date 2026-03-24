@@ -1,0 +1,45 @@
+============================================================
+Measurement file information:
+Measurement filepath: 
+'/Users/jadenchilimigras/Downloads/Research/Pelton/Data/1:12:26/1_g(2)_05_08_2025_CdSe_ZnS_10min_ND100_2.5MHz_IL10.0_256ps.dat'
+Measurement date: '05/08/2025'
+Measurement time: '12:03:15 AM'
+============================================================
+General file parameters:
+Measurement mode selected: 3
+Resolution: 0.256
+Bin width: 25ps
+Time window: 50ns
+Trimming threshold: 15000
+============================================================
+Measurement type specific parameters:
+resolution: 0.256
+sync_rate: N/A
+input_rate: N/A
+bin_width: N/A
+model: g2 Pulsed
+fit_params: [399.92611192   1.10101049   7.12665625   9.37553861   5.11306075
+  55.05763812  -0.81744536  65.22586556  12.        ]
+fit_params_errors: [inf inf inf inf inf inf inf inf inf]
+g2(0): 0.18287601622433608
+g2_fit_period: 2.674822359328277
+============================================================
+
+============================================================
+File Header:
+HW_Type: #PicoHarp 300
+File_CreatingDate: 05/08/2025
+File_CreatingTime: 12:03:15 AM
+Channels_Per_Curve: 65536
+Display_Curve_no: 0
+Memory_Block_no: 0
+NS_Per_Channel: 0.256
+File_Comment: DAT File Converted
+Measurement_Mode: 2
+TTResultFormat_TTTRRecType: DAT_FILE
+TTResultFormat_BitsPerRecord: 32
+MeasDesc_Resolution: 0.256
+MeasDesc_GlobalResolution: 0.256
+MeasDesc_AcquisitionTime: 0
+TTResult_NumberOfRecords: 0
+============================================================

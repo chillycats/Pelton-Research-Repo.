@@ -60,8 +60,8 @@ photon_count = 0
 overflow_count = 0
 marker_count = 0
 
-def readPTU(filepath, sync_channel=0, signal_channel=1, 
-            time_window_ns=50, bin_width_ps=25):
+def readPTU(filepath, time_window_ns=50, bin_width_ps=25,
+            sync_channel=0, signal_channel=1):
     """
     Read PTU file with optional TCSPC histogramming for T2 mode.
     
@@ -218,7 +218,7 @@ def readPTU(filepath, sync_channel=0, signal_channel=1,
                 'markers': t2_histogram_data['marker_count'],
                 'overflows': t2_histogram_data['overflow_count']
             },
-            # TCSPC HISTOGRAM DATA - THIS IS WHAT YOU WANT!
+            # T2 Time-Correlation Single Photon Counting
             'tcspc': {
                 'histogram': t2_histogram_data['histogram'],
                 'time_axis': t2_histogram_data['time_axis'],
@@ -238,7 +238,6 @@ def readPTU(filepath, sync_channel=0, signal_channel=1,
                     'counts_per_sync': t2_histogram_data['counts_per_sync'],
                     'n_sync_pulses': t2_histogram_data['n_sync_pulses'],
                     'n_signal_photons': t2_histogram_data['n_signal_photons'],
-                    'histogramming_efficiency': t2_histogram_data['histogramming_efficiency']
                 }
             }
         }
@@ -546,8 +545,8 @@ def readT2(file, sync_channel=0, signal_channel=1, time_window_ns=50, bin_width_
     signal_times = []         # Absolute times of all signal photons (ns)
     last_sync_time_ns = None  # Most recent sync time for histogramming
     
-    # Histogram parameters
-    bin_width_ns = bin_width_ps / 1000  # Convert ps to ns
+    # Histogram parameters 
+    bin_width_ns = bin_width_ps / 1000  # Convert ps to ns (CHECK THIS!)
     n_bins = int(time_window_ns / bin_width_ns)
     histogram = np.zeros(n_bins, dtype=np.int64)
     histogrammed_photons = 0
@@ -693,7 +692,6 @@ def readT2(file, sync_channel=0, signal_channel=1, time_window_ns=50, bin_width_
         'total_time_ns': total_time_ns,
         'n_sync_pulses': len(sync_times),
         'n_signal_photons': len(signal_times),
-        'histogramming_efficiency': (histogrammed_photons / len(signal_times) if len(signal_times) > 0 else 0),
     }
 
 def readDAT(file):

@@ -20,3 +20,17 @@ LTriExp = {
     'MTitle': 'Tri-Exponential Fit of Flourescence Decay Data and Residuals',
     'Subtitle': 'Tri-Exponential Fit of Flourescence Decay Data'
 }
+
+PExp = {
+    'FColor': 'red',
+    'FLabel': 'g2 Pulsed Fit',
+    'MTitle': 'g2 Pulsed Fit of TCSPC Data and Residuals',
+    'Subtitle': 'g2 Pulsed Fit of TCSPC Data'
+}
+
+CWExp = {
+    'FColor': 'red',
+    'FLabel': 'CW Autocorrelation Fit',
+    'MTitle': 'CW Autocorrelation Fit of TCSPC Data and Residuals',
+    'Subtitle': 'CW Autocorrelation Fit of TCSPC Data'
+}

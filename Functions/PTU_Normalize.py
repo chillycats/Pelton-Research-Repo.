@@ -21,18 +21,19 @@ Returns:
     np.ndarray of the normalized experimental data
 """
 
-def T2_NLifetime(exp_data, bckgrd_data, duration_ratio):
+def NLifetime(exp_data, bckgrd_data, duration_ratio):
     # averages the background data values
     bckgrd_data_avg = np.average(bckgrd_data)
 
-    # multiplies the difference to get the correct average background count for the duration of experimental measurement duration
+    # multiplies the difference to get the correct average background count for the 
+    # duration of experimental measurement duration
     bckgrd_data_avg = bckgrd_data_avg * duration_ratio
 
     # finds the index of the maximum value of the experimental data array
     max_index = np.argmax(exp_data) 
 
     # defines the main data as starting from the max value to the end of the experimental data
-    main_data = exp_data[max_index::]
+    main_data = exp_data[max_index:]
     # subtracts the background from the main data
     main_data_backgrd_subtracted = main_data - bckgrd_data_avg 
     
@@ -42,3 +43,19 @@ def T2_NLifetime(exp_data, bckgrd_data, duration_ratio):
 
     # returning the normalized main data array
     return normalized_data
+
+def Ng2(exp_data, bckgrd_data, Mduration, duration_ratio, sync, input, binsize):
+    # averages the background data values
+    bckgrd_data_avg = np.average(bckgrd_data)
+
+    # multiplies the difference to get the correct average background count for the 
+    # duration of experimental measurement duration
+    bckgrd_data_avg = bckgrd_data_avg * duration_ratio
+
+    Nsync = sync / Mduration
+    Ninput = input / Mduration
+
+    normalized_data = (exp_data / (Nsync * Ninput)) * (Mduration / binsize)
+
+    return normalized_data
+
