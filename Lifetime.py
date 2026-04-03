@@ -91,6 +91,8 @@ def Lifetime(MDATA, BDATA):
     TxtDict = {
         'resolution': Mresolution,
         'num_of_fits': LNumFits,
+        # General fit model array of params in order
+        'model_params': ['A₁', 'τ₁', 'A₂', 'τ₂', 'A₃', 'τ₃'],
         # Lifetime fit 1 
         'lifetime_model1': Lfit1_dict['model_type'],
         'fit1_params': Lfit1_dict['parameters'],

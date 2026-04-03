@@ -100,6 +100,8 @@ def g2Pulsed(MDATA, BDATA):
         'sync_rate': sync_rate,
         'input_rate': input_rate,
         'bin_width': bin_width,
+        # General fit model array of params in order
+        'model_params': ['A₁', 'τ₁', 'A₂', 'τ₂', 'R', 'τ0', 'Number of Peaks'],
         # Fitting params
         'model': 'g2 Pulsed',
         'fit_params': Pfit1_dict['parameters'],

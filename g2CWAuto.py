@@ -89,6 +89,8 @@ def g2CWAuto(MDATA, BDATA):
         'sync_rate': sync_rate,
         'input_rate': input_rate,
         'bin_width': bin_width,
+        # General fit model array of params in order
+        'model_params': ['A₁', 'τ₁'],
         # Fitting params
         'model': 'g2 CW Autocorrelation',
         'fit_params': CW_Fit1_Dict['parameters'],
