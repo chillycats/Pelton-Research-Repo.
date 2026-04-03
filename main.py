@@ -28,6 +28,10 @@ from config import Mduration
 from config import Bfilepath, Bduration
 from config import bin_width_ps, time_window_ns
 
+# Blinking parameters
+from config import OO_Blinking
+from config import OO_Threshold
+
 # Lifetime fitting parameters
 from config import LNumFits
 from config import Lfit1, Lfit2, Lfit3
@@ -45,6 +49,7 @@ from config import Pfit1
 from Lifetime import Lifetime
 from g2Pulsed import g2Pulsed
 from g2CWAuto import g2CWAuto
+from Blinking_Bleaching import blinking
 
 # Plotting Info. Dicts
 from Functions.plotting_config import LExp, LBiExp, LTriExp
@@ -274,6 +279,16 @@ if __name__ == '__main__':
     else:
         raise ValueError('ERROR. MeasurementType not selected.')
     
+    # = = = = = = = = = = = = = = = = = = = = = = =
+    #            BLINKING & BLEACHING
+    # = = = = = = = = = = = = = = = = = = = = = = =
+
+    if OO_Blinking == 1:
+        Figures, TxtDict = blinking(MDICT, Figures, TxtDict, 0)
+
+    # = = = = = = = = = = = = = = = = = = = = = = =
+    #          CREATING OUTPUT PDF & TXT
+    # = = = = = = = = = = = = = = = = = = = = = = =
     
     pdf_filename = f"{output_filename}.pdf"
     txt_filename = f"{output_filename}.txt"
@@ -307,6 +322,7 @@ if __name__ == '__main__':
         file.write("Time window: " + repr(time_window_ns) + 'ns' + '\n')
         file.write("Trimming threshold: " + repr(trimming_threshold) + '\n')
 
+        # Saving parameters specific to the fitting
         file.write("="*60 + '\n')
         file.write("Measurement type specific parameters:" + '\n')
 
@@ -317,6 +333,7 @@ if __name__ == '__main__':
 
         file.write('\n')
 
+        # Writing the original header file into the txt file
         file.write("="*60 + '\n')
         file.write("File Header:" + '\n')
 

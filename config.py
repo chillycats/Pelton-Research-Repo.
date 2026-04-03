@@ -47,7 +47,7 @@ trimming_threshold = 1500
 # to plot one or two fits DQE will plot fit1 or fit1 and fit2 respectively. 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - -
 
-LNumFits = 3
+LNumFits = 1
 
 Lfit1 = [500, 100, 50, 10, 20, 5]
 Lfit2 = [500, 100, 50, 10, 0, 0]
@@ -88,3 +88,22 @@ CFit1 = [0.5, 5]
 Pulse_Period_ns = 410 # in nanoseconds
 Pulsed_Zero_Time_Offset = 68 # in nanoseconds
 Pfit1 = [0.5, 5, 0.5, 20, 0.5]
+
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+#                          Blinking & Bleaching Parameters
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =  
+
+"""
+ - - - - - - - - - - - - - - - - - 
+           00_Blinking 
+ - - - - - - - - - - - - - - - - - 
+ 0 = The program will NOT apply the blinking code to the data file
+ 1 = The program will apply the blinking code to the data file
+ - - - - - - - - - - - - - - - - - 
+ """
+OO_Blinking = 1
+
+# On/Off threshold - represented as a fraction of the peak intensity
+OO_Threshold = 0.2 
+# Bin size for blinking
+blink_bin_width = 0.08

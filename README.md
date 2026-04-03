@@ -1,8 +1,8 @@
 > [!CAUTION] This is a new but incomplete version of the program. Please proceed with caution and report any errors to Jaden Chilimigras at jchilim1@umbc.edu
 
-# DQE Repository
+# Pelton Research Repository
 
-DQE (Diagonistic program for Quantum Emitters) was designed as a user friendly option when analyzing data from the PicoQuant system in both T2 and T3 mode. DQE can be used to perform normalization, fitting, and data analysis on output files from the PicoQuant system to help build a more comprehensive understanding of the properties and stability of quantum emitters.
+This repository was designed as a user friendly option when analyzing data from the PicoQuant system in both T2 and T3 mode. DQE can be used to perform normalization, fitting, and data analysis on output files from the PicoQuant system to help build a more comprehensive understanding of the properties and stability of quantum emitters.
 
 Currently, the program is able to read in the two different types of measurement modes (T2 and T3) and extract the header information and TCSPC data. From the information either inputted by the user or extracted from the raw file the program can normalize the data and perform a fitting, with residuals, of lifetime, g2 pulsed, and CW Autocorrelation measurements. Note, however, that the normalization for the g2 measurements (CW Autocorrelation and Pulsed) is not producing the results we would expect.   Please see the resources folder for Matlab code provided by PicoQuant as a reference for the file format of the .ptu files specifically for the PicoHarp data system.
 

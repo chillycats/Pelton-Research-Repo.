@@ -1,8 +1,8 @@
 > [!CAUTION] This is a new but incomplete version of the program. Please proceed with caution and report any errors to Jaden Chilimigras at jchilim1@umbc.edu
 
-# DQE Detailed "Manual"
+# Repository Detailed "Manual"
 
-This README will provide all the details necessary for you to understand how DQE works. By the end of this README you will understand the basic structure of DQE, how each of its processes work, and the meaning behind many of the variables. Links to further resources that may be helpful are provided below:
+This README will provide all the details necessary for you to understand how this repository works. By the end of this README you will understand the basic structure of DQE, how each of its processes work, and the meaning behind many of the variables. Links to further resources that may be helpful are provided below:
 
 - [PicoHarp 300 Manual](https://www.picoquant.com/dl_manuals/discontinued/PicoHarp300_DLL_Manual.pdf)
 - [PicoQuant photon counting brochure](https://www.picoquant.com/images/uploads/downloads/photon_counting_brochure.pdf)
