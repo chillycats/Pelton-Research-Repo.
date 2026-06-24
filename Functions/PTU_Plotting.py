@@ -129,11 +129,80 @@ def rawPlot(time_array, main_data):
      # plotting the comparison plot
     fig, rawplot = plt.subplots(figsize = (12,6))
 
-    rawplot.plot(time_array, main_data, color = 'black', label = 'Non-Normalized Data')
+    rawplot.plot(time_array, main_data, color = 'black', label = 'Photon counts')
     rawplot.set_yscale("log")
     rawplot.legend()
     rawplot.set_xlabel("Delay Time (ns)")
-    rawplot.set_ylabel("Non-Normalized Data")
+    rawplot.set_ylabel("Non-Normalized Photon Counts")
     rawplot.set_title("Non-Normalized Plot of Data")
+
+    return fig
+
+def normPlot(time_array, main_data):
+    """
+    normPlot
+
+    time_array = time_array
+    main_data = original data
+
+    The comparison_plot function aims to plot all of the fits the user determined with the normalized main data all on one graph so that the user can compare
+    each fit against one another. It first determines whether or not there are two or three fits to compare then assigns the proper label for each fit. After
+    it assigns all the correct labels it will plot each of the fits. If there is only one fit then the function will not plot anything and will return.
+    """
+     # plotting the comparison plot
+    fig, normplot = plt.subplots(figsize = (12,6))
+
+    normplot.plot(time_array, main_data, color = 'black', label = 'Photon counts')
+    # Plotting y=1 for visualization
+    normplot.axhline(1, color='r', linestyle='--', linewidth=1.5)
+    normplot.set_yscale("log")
+    normplot.legend()
+    normplot.set_xlabel("Delay Time (ns)")
+    normplot.set_ylabel("Normalized Photon Counts")
+    normplot.set_title("Normalized Plot of TCSPC Data")
+
+    return fig
+
+def intensity_vs_exptime(time_array, main_data, bin_width_ms, avg_or_thresh_val, avg_or_thresh):
+    """
+    blinking_w_threshold
+
+    time_array = time_array
+    main_data = photon counts
+    threshold = number which determines whether a state is on or off
+
+    The blinking_w_threshold function plots the raw data along with the threshold to get a rough idea of what the
+    blinking plot will look like.
+    """
+
+    fig, blink_w_thresh = plt.subplots(figsize = (12, 6))
+
+    # Plotting the data
+    blink_w_thresh.plot(time_array, main_data, label='Intensity', color='black')
+    # Plotting the threshold line
+    blink_w_thresh.axhline(avg_or_thresh_val, color='r', linestyle='--', linewidth=1.5, label=f'{avg_or_thresh}: {avg_or_thresh_val}')
+    
+    # Labeling axes & title
+    blink_w_thresh.set_xlabel("Experiment Time (s)")
+    blink_w_thresh.set_ylabel("Intensity")
+    blink_w_thresh.set_title(f"Intensity vs. Experiment Time with a bin size of {bin_width_ms} ms")
+    blink_w_thresh.legend()
+
+    return fig
+
+def counts_vs_exptime(exp_time, counts, bin_width_ms):
+    # Ensures the grid lines are behind the data for easier visualization
+    plt.rcParams['axes.axisbelow'] = True
+
+    fig, blinking = plt.subplots(figsize = (12, 6))
+    blinking.plot(exp_time, counts, color='green', label='Photon Counts')
+    # Plotting the threshold line
+    blinking.axhline(y=np.average(counts), color='r', linestyle='--', linewidth=1.5, label=f'Average photon count: {np.average(counts):.1f}')
+    
+    # Labeling axes & title
+    blinking.set_xlabel("Experiment Time (s)")
+    blinking.set_ylabel("Photon counts")
+    blinking.set_title(f"Photon counts vs. Experiment Time with a bin size of {bin_width_ms} ms")
+    blinking.legend()
 
     return fig

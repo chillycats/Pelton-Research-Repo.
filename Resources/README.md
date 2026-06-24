@@ -5,7 +5,7 @@
 This README will provide all the details necessary for you to understand how this repository works. By the end of this README you will understand the basic structure of DQE, how each of its processes work, and the meaning behind many of the variables. Links to further resources that may be helpful are provided below:
 
 - [PicoHarp 300 Manual](https://www.picoquant.com/dl_manuals/discontinued/PicoHarp300_DLL_Manual.pdf)
-- [PicoQuant photon counting brochure](https://www.picoquant.com/images/uploads/downloads/photon_counting_brochure.pdf)
+- [PicoQuant photon counting brochure](https://www.mtb.es/files/products/7304_photon_counting_brochure_1.pdf)
 
 ## Config File
 
@@ -27,7 +27,7 @@ This section of the "Manual" does a deep dive into all the different functions t
 PTU_Reader is the first function DQE calls and as the name suggests it is the function that reads in the data inputted by the user. This function will output all the neccessary information required for further analysis in the form of a dictionary. This includes the header information, any statistics, and photon arrival times/coicidence times. An example of the structure of the dictornary is seen below:
 
 ```py
-# T3 and dat mode specific 
+
 result_dict = {
             'header': Header_Data,
             'metadata': {
@@ -47,36 +47,34 @@ result_dict = {
                 'markers': marker_count,
                 'overflows': overflow_count
             }
+            # T2 mode additional information 
+            'tcspc': {
+                'histogram': t2_histogram_data['histogram'],
+                'time_axis': t2_histogram_data['time_axis'],
+                'histogrammed_photons': t2_histogram_data['histogrammed_photons'],
+                'sync_times': t2_histogram_data['sync_times'],
+                'signal_times': t2_histogram_data['signal_times'],
+                'parameters': {
+                    'sync_channel': t2_histogram_data['sync_channel'],
+                    'signal_channel': t2_histogram_data['signal_channel'],
+                    'time_window_ns': t2_histogram_data['time_window_ns'],
+                    'bin_width_ps': t2_histogram_data['bin_width_ps'],
+                    'n_bins': t2_histogram_data['n_bins']
+                },
+                'statistics': {
+                    'sync_rate_MHz': t2_histogram_data['sync_rate_MHz'],
+                    'photon_rate_MHz': t2_histogram_data['photon_rate_MHz'],
+                    'counts_per_sync': t2_histogram_data['counts_per_sync'],
+                    'n_sync_pulses': t2_histogram_data['n_sync_pulses'],
+                    'n_signal_photons': t2_histogram_data['n_signal_photons'],
+                    'histogramming_efficiency': t2_histogram_data['histogramming_efficiency']
+                }
+            }
         }
 ```
 
-The dictionary structure above is generic for T3 and any .dat files. If a measurement is taken in T2 mode there will be additional items within the dictionary as seen below:
+The dictionary structure above is generic for T3 and any .dat files. If a measurement is taken in T2 mode there will be additional items within the dictionary as seen in the dictionary above.
 
-```py
-# T2 TCSPC Histogram Data
-'tcspc': {
-    'histogram': t2_histogram_data['histogram'],
-    'time_axis': t2_histogram_data['time_axis'],
-    'histogrammed_photons': t2_histogram_data['histogrammed_photons'],
-    'sync_times': t2_histogram_data['sync_times'],
-    'signal_times': t2_histogram_data['signal_times'],
-    'parameters': {
-        'sync_channel': t2_histogram_data['sync_channel'],
-        'signal_channel': t2_histogram_data['signal_channel'],
-        'time_window_ns': t2_histogram_data['time_window_ns'],
-        'bin_width_ps': t2_histogram_data['bin_width_ps'],
-        'n_bins': t2_histogram_data['n_bins']
-    },
-    'statistics': {
-        'sync_rate_MHz': t2_histogram_data['sync_rate_MHz'],
-        'photon_rate_MHz': t2_histogram_data['photon_rate_MHz'],
-        'counts_per_sync': t2_histogram_data['counts_per_sync'],
-        'n_sync_pulses': t2_histogram_data['n_sync_pulses'],
-        'n_signal_photons': t2_histogram_data['n_signal_photons'],
-        'histogramming_efficiency': t2_histogram_data['histogramming_efficiency']
-    }
-}
-```
 
 ## "PTU_Normalize"
 

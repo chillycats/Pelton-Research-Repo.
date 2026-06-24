@@ -86,6 +86,9 @@ def readPTU(filepath, time_window_ns=50, bin_width_ps=25,
     # Sets these variables/arrays as global variables
     global photons, markers, overflows
     global photon_count, overflow_count, marker_count
+    global TTResultFormat_TTTRRecType, TTResult_NumberOfRecords
+    global MeasDesc_Resolution, MeasDesc_GlobalResolution, isT2
+
     
     # Reset data arrays and counters for the file
     photons = []
@@ -132,6 +135,28 @@ def readPTU(filepath, time_window_ns=50, bin_width_ps=25,
             result_type = 'T3'
             
         elif TTResultFormat_TTTRRecType == rtPicoHarpT2:
+            # Debug file position
+            current_pos = file.tell()
+            file.seek(0, 2)  # Go to end
+            file_size = file.tell()
+            file.seek(current_pos)  # Go back
+            
+            bytes_remaining = file_size - current_pos
+            bytes_needed = TTResult_NumberOfRecords * 4
+            
+            """print(f"\n=== FILE DEBUG INFO ===")
+            print(f"File size: {file_size} bytes")
+            print(f"Current position: {current_pos} bytes")
+            print(f"Bytes remaining: {bytes_remaining}")
+            print(f"Expected records: {TTResult_NumberOfRecords}")
+            print(f"Bytes needed: {bytes_needed}")
+            print(f"Actual records possible: {bytes_remaining // 4}")"""
+            
+            if bytes_remaining < bytes_needed:
+                print(f"WARNING: File is too short! Will only read {bytes_remaining // 4} records")
+                # Override the record count
+                TTResult_NumberOfRecords = bytes_remaining // 4
+
             # CAPTURE THE RETURN VALUE from readT2
             t2_histogram_data = readT2(file, sync_channel, signal_channel, 
                                       time_window_ns, bin_width_ps)
@@ -220,6 +245,7 @@ def readPTU(filepath, time_window_ns=50, bin_width_ps=25,
             },
             # T2 Time-Correlation Single Photon Counting
             'tcspc': {
+                'photon_times': t2_histogram_data['photon_times'],
                 'histogram': t2_histogram_data['histogram'],
                 'time_axis': t2_histogram_data['time_axis'],
                 'histogrammed_photons': t2_histogram_data['histogrammed_photons'],
@@ -507,9 +533,17 @@ def readT3(file):
         
         record_num += 1
 
+    # Check timing - last true time should be close to the actual experiment duration
+    """if photon_times:
+        first_time = photon_times[0][1]
+        last_time = photon_times[-1][1]
+        print(f"\nFirst photon: {first_time/1e9:.3f} s")
+        print(f"Last photon: {last_time/1e9:.3f} s")
+        print(f"Duration: {(last_time - first_time)/1e9:.3f} s")"""
+
 def readT2(file, sync_channel=0, signal_channel=1, time_window_ns=50, bin_width_ps=25):
     """
-    Read PicoHarp T2 format data into memory arrays.
+    Read PicoHarp T2 format data and reconstruct T3-style histogram.
     
     T2 Record Structure (32 bits):
     +----------------------+----------------------------+
@@ -525,7 +559,7 @@ def readT2(file, sync_channel=0, signal_channel=1, time_window_ns=50, bin_width_
     - If markers>0: Marker event (external trigger)
     """
 
-    # Initialize all variables (same as original)
+    # Initialize all variables
     ofltime = 0
     WRAPAROUND = 210698240
     record_num = 0
@@ -540,7 +574,210 @@ def readT2(file, sync_channel=0, signal_channel=1, time_window_ns=50, bin_width_
     photon_times = []
     channel = []
     
-    # NEW: For histogramming
+    # For T3 reconstruction (sync times and photon times separately)
+    sync_times = []           # Absolute times of all sync pulses (ns)
+    signal_times = []         # Absolute times of all signal photons (ns)
+    
+    # For histogramming - use separate arrays for processing
+    all_sync_times = []
+    all_signal_times = []
+    
+    # Histogram parameters 
+    bin_width_ns = bin_width_ps / 1000  # Convert ps to ns
+    n_bins = int(time_window_ns / bin_width_ns)
+    histogram = np.zeros(n_bins, dtype=np.int64)
+    histogrammed_photons = 0
+    sync_to_photon_times = []  # Store individual delay times for debugging
+    
+    # =============================================================
+    # FIRST PASS: Read all data and collect sync/signal times
+    # =============================================================
+    for i in range(TTResult_NumberOfRecords):
+        # Read 32-bit record
+        t2_record = struct.unpack('I', file.read(4))[0]
+        
+        # Extract components
+        t2time = t2_record & 0xFFFFFFF        # Lower 28 bits: time tag
+        chan = (t2_record >> 28) & 0xF        # Upper 4 bits: channel
+        
+        # Apply overflow correction to get absolute time tag
+        timetag = ofltime + t2time
+        
+        # Store original data structures
+        if 0 <= chan <= 4:
+            # Convert to absolute time in nanoseconds
+            true_time_ns = timetag * MeasDesc_GlobalResolution * 1e9
+            
+            # Store in original structures
+            photon_times.append(true_time_ns)
+            channel.append(chan)
+            photons.append((
+                record_num,     # Record number in file
+                timetag,        # Absolute time tag value
+                chan,           # Channel (0-4)
+                0,              # Dtime is 0 for T2 mode (not applicable)
+                true_time_ns    # Absolute time in nanoseconds
+            ))
+            photon_count += 1
+            
+            # Collect sync and signal times
+            if chan == sync_channel:
+                all_sync_times.append(true_time_ns)
+            elif chan == signal_channel:
+                all_signal_times.append(true_time_ns)
+                
+        elif chan == 15:
+            # =============================================================
+            # SPECIAL RECORD: Either overflow or marker
+            # =============================================================
+            markers_val = t2_record & 0xF  # Marker bits (lowest 4 bits)
+            
+            if markers_val == 0:
+                # =========================================================
+                # OVERFLOW RECORD: Time tag counter wrapped around
+                # =========================================================
+                ofltime += WRAPAROUND
+                overflows.append((record_num, 1))
+                overflow_count += 1
+            else:
+                # =========================================================
+                # MARKER EVENT: External trigger or synchronization signal
+                # =========================================================
+                markers.append((
+                    record_num,     # Record number
+                    timetag,        # Absolute time tag value  
+                    markers_val     # Marker bitfield
+                ))
+                marker_count += 1
+
+        else:
+            # =============================================================
+            # UNKNOWN CHANNEL: Should not happen in valid files
+            # =============================================================
+            print(f"Warning: Unknown channel {chan} at record {record_num}")
+        
+        record_num += 1
+    
+    # =============================================================
+    # SECOND PASS: Reconstruct T3 histogram
+    # For each photon, find the PREVIOUS sync pulse
+    # =============================================================
+    sync_idx = 0  # Index for sync pulses
+    n_syncs = len(all_sync_times)
+    
+    for photon_time in all_signal_times:
+        # Find the sync pulse that occurred immediately before this photon
+        # Since both arrays are sorted (time-ordered), we can advance sync_idx
+        while sync_idx < n_syncs and all_sync_times[sync_idx] < photon_time:
+            sync_idx += 1
+        
+        # The previous sync pulse is at sync_idx - 1
+        if sync_idx > 0:  # Found a preceding sync pulse
+            prev_sync_time = all_sync_times[sync_idx - 1]
+            time_since_sync = photon_time - prev_sync_time
+            
+            # Store for debugging/analysis
+            sync_to_photon_times.append(time_since_sync)
+            sync_times.append(prev_sync_time)
+            signal_times.append(photon_time)
+            
+            # Check if within histogram window (positive and bounded)
+            if 0 <= time_since_sync < time_window_ns:
+                bin_idx = int(time_since_sync / bin_width_ns)
+                if 0 <= bin_idx < n_bins:
+                    histogram[bin_idx] += 1
+                    histogrammed_photons += 1
+    
+    # Create time axis for the histogram
+    time_axis = np.arange(n_bins) * bin_width_ns + bin_width_ns/2  # Center of bins
+    
+    # Calculate statistics
+    total_time_ns = 0
+    if len(sync_times) > 0:
+        total_time_ns = max(max(sync_times), max(all_signal_times)) if all_signal_times else max(sync_times)
+    
+    sync_rate = (len(all_sync_times) / total_time_ns * 1e9) if total_time_ns > 0 else 0
+    photon_rate = (len(all_signal_times) / total_time_ns * 1e9) if total_time_ns > 0 else 0
+    counts_per_sync = len(all_signal_times) / len(all_sync_times) if len(all_sync_times) > 0 else 0
+
+    # Return complete dataset
+    return {
+        # Original data 
+        'photons': photons,
+        'markers': markers,
+        'overflows': overflows,
+        'photon_times': photon_times,
+        'channel': channel,
+        'photon_count': photon_count,
+        'overflow_count': overflow_count,
+        'marker_count': marker_count,
+        
+        # T3-reconstructed data
+        'sync_times': sync_times,
+        'signal_times': signal_times,
+        'sync_to_photon_times': sync_to_photon_times,
+        
+        # Histogram data (now matches T3 mode)
+        'histogram': histogram,
+        'time_axis': time_axis,
+        'histogrammed_photons': histogrammed_photons,
+        'total_histogram_counts': histogram.sum(),
+        
+        # Raw data for reference
+        'raw_sync_times': all_sync_times,
+        'raw_signal_times': all_signal_times,
+        
+        # Parameters
+        'sync_channel': sync_channel,
+        'signal_channel': signal_channel,
+        'time_window_ns': time_window_ns,
+        'bin_width_ps': bin_width_ps,
+        'n_bins': n_bins,
+        
+        # Statistics
+        'sync_rate_MHz': sync_rate,
+        'photon_rate_MHz': photon_rate,
+        'counts_per_sync': counts_per_sync,
+        'total_time_ns': total_time_ns,
+        'n_sync_pulses': len(all_sync_times),
+        'n_signal_photons': len(all_signal_times),
+        'n_histogrammed_photons': histogrammed_photons,
+    }
+
+"""def readT2(file, sync_channel=0, signal_channel=1, time_window_ns=50, bin_width_ps=25):
+    
+    Read PicoHarp T2 format data into memory arrays.
+    
+    T2 Record Structure (32 bits):
+    +----------------------+----------------------------+
+    | Chan (4 bits)        |     T2time (28 bits)       |
+    +----------------------+----------------------------+
+    
+    Where:
+    - Chan: Channel number (0-4 = photons, 15 = special record)
+    - T2time: Absolute time tag (28 bits, wraps every 210698240)
+    
+    Special records (Chan=15):
+    - If markers=0: Overflow record (T2time counter wrapped)
+    - If markers>0: Marker event (external trigger)
+    
+
+    # Initialize all variables
+    ofltime = 0
+    WRAPAROUND = 210698240
+    record_num = 0
+    
+    # Original data structures
+    photons = []
+    markers = []
+    overflows = []
+    photon_count = 0
+    overflow_count = 0
+    marker_count = 0
+    photon_times = []
+    channel = []
+    
+    # For histogramming
     sync_times = []           # Absolute times of all sync pulses (ns)
     signal_times = []         # Absolute times of all signal photons (ns)
     last_sync_time_ns = None  # Most recent sync time for histogramming
@@ -610,7 +847,7 @@ def readT2(file, sync_channel=0, signal_channel=1, time_window_ns=50, bin_width_
                 
         elif chan == 15:
             # =============================================================
-            # SPECIAL RECORD: Either overflow or marker (your existing code)
+            # SPECIAL RECORD: Either overflow or marker
             # =============================================================
             markers_val = t2_record & 0xF  # Marker bits (lowest 4 bits)
             
@@ -654,10 +891,10 @@ def readT2(file, sync_channel=0, signal_channel=1, time_window_ns=50, bin_width_
     sync_rate = (len(sync_times) / total_time_ns * 1e9) if total_time_ns > 0 else 0
     photon_rate = (len(signal_times) / total_time_ns * 1e9) if total_time_ns > 0 else 0
     counts_per_sync = len(signal_times) / len(sync_times) if len(sync_times) > 0 else 0
-    
+
     # Return complete dataset
     return {
-        # Original data (same as your function)
+        # Original data 
         'photons': photons,
         'markers': markers,
         'overflows': overflows,
@@ -692,7 +929,7 @@ def readT2(file, sync_channel=0, signal_channel=1, time_window_ns=50, bin_width_
         'total_time_ns': total_time_ns,
         'n_sync_pulses': len(sync_times),
         'n_signal_photons': len(signal_times),
-    }
+    }"""
 
 def readDAT(file):
     """
@@ -751,7 +988,7 @@ def readDAT(file):
         
         # Additional header fields to match PTU format
         Header_Data['File_Comment'] = 'DAT File Converted'
-        Header_Data['Measurement_Mode'] = 2  # .dat files are usually in T2 mode
+        Header_Data['Measurement_Mode'] = 'Histogramming mode'
         Header_Data['TTResultFormat_TTTRRecType'] = 'DAT_FILE'
         Header_Data['TTResultFormat_BitsPerRecord'] = 32
         Header_Data['MeasDesc_Resolution'] = Header_Data.get('NS_Per_Channel', 1.0)

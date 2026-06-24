@@ -24,20 +24,16 @@ from Functions.PTU_Plotting import plots, comparison_plot, rawPlot
 
 from config import MeasurementType, trimming_threshold
 from config import Bfilepath, Bduration
-from config import bin_width_ps, time_window_ns
-
+from config import bin_width_ps
 # g2 Pulsed fitting parameters
 from config import CW_Zero_Time_Offset
 from config import Pulse_Period_ns
 from config import CFit1
 
-def g2CWAuto(MDATA, BDATA):
+def g2CWAuto(MDATA, BDATA, Figures, TxtDict):
     print("g2 Pulsed measurement selected proceeding with normalization")
     print("and fitting.")
     print("="*60)
-
-    # Defining the Figures array - this along with a dict of all important info. will be returned
-    Figures = MDATA['figures']
 
     # Defining all important variables and arrays from Dict of the measurement and background data
     Mcounts = MDATA['photon_counts']
@@ -83,18 +79,17 @@ def g2CWAuto(MDATA, BDATA):
 
     # Creating and defining the dict. that will store all important values to be saved in the
     # txt file output
-    TxtDict = {
-        # General params
-        'resolution': Mresolution,
-        'sync_rate': sync_rate,
-        'input_rate': input_rate,
-        'bin_width': bin_width,
-        # General fit model array of params in order
-        'model_params': ['A₁', 'τ₁'],
-        # Fitting params
-        'model': 'g2 CW Autocorrelation',
-        'fit_params': CW_Fit1_Dict['parameters'],
-        'fit_params_errors': CW_Fit1_Dict['errors'],
-    }
 
+    # General params
+    TxtDict['resolution'] = Mresolution
+    TxtDict['sync_rate'] = sync_rate
+    TxtDict['input_rate'] = input_rate
+    TxtDict['bin_width'] = bin_width
+    # General fit model array of params in order
+    TxtDict['model_params'] = ['A₁', 'τ₁']
+    # Fitting params
+    TxtDict['model'] = 'g2 CW Autocorrelation'
+    TxtDict['fit_params'] = CW_Fit1_Dict['parameters']
+    TxtDict['fit_params_errors'] = CW_Fit1_Dict['errors']
+    
     return Figures, TxtDict

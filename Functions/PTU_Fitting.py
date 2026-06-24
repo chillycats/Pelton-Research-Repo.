@@ -279,23 +279,32 @@ def g2_Pulsed(t, pulse_period_ns, y0, A1, tau1, A2, tau2, R, time_offset, num_pe
 #                   FITTING
 # = = = = = = = = = = = = = = = = = = = = = = =
 
-def FitPulsed(data, time, guesses, offset):
+def FitPulsed(data, time, guesses, offset, pulse_peaks):
 
-    # Def
-    array = ['A₁', 'τ₁', 'A₂', 'τ₂', 'R', 'τ0', 'Number of Peaks']
+    # Defining the print parameters
+    array = ['Pulse Period', 'y0', 'A₁', 'τ₁', 'A₂', 'τ₂', 'R', 'τ0', 'Number of Peaks']
 
     guesses.append(offset)
 
     # Smoothing the data to find number of peaks
     smooth = signal.savgol_filter(data, 53, 1)
 
-    # Finding the number of peaks
-    # Note that for the signal.find_peaks function you may have to play with the 
-    # min height threshold and distance (should be pulse width)
-    # note that original settings was height=3 and distance=410
-    # if the peaks arent being properly counted set prominence=1
-    peaks = signal.find_peaks(-smooth, prominence=1)
-    num_of_peaks = len(peaks[0])
+    # Finding the number of peaks (this doesn't always work and sometimes you will have to 
+    # define them yourself)
+    peaks, properties = signal.find_peaks(-smooth, prominence=1)
+    num_of_peaks = len(peaks)
+
+    # If the user manually defines the number of peaks
+    if pulse_peaks != 0:
+        num_of_peaks = pulse_peaks
+
+    if len(peaks) >= 2:
+        # Calculating the height of the first peak and the average height of remaining peaks
+        peak0_height = data[peaks[0]]
+        avg_peak_height = np.average(data[peaks[1:]])
+        difference = avg_peak_height - peak0_height
+    else:
+        difference = 'N/A'
 
     guesses.append(num_of_peaks)
 
@@ -333,6 +342,7 @@ def FitPulsed(data, time, guesses, offset):
         'residuals': Residuals, 
         'g2(0)': g2_zero_norm,
         'g2 fit period': g2_Tp,
+        'height difference': difference
     }
 
     return fitI

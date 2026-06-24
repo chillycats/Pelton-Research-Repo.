@@ -20,50 +20,46 @@ from typing import Dict, Any, Tuple
 from Functions.PTU_Normalize import Ng2
 from Functions.PTU_Trimmer import threshold_trim_function
 from Functions.PTU_Fitting import FitPulsed
-from Functions.PTU_Plotting import plots, comparison_plot, rawPlot
+from Functions.PTU_Plotting import plots, comparison_plot, rawPlot, normPlot
 
-from config import MeasurementType, trimming_threshold
+from config import MeasurementType, trimming_threshold, trimming
 from config import Bfilepath, Bduration
-from config import bin_width_ps, time_window_ns
-
+from config import bin_width_ps
 # g2 Pulsed fitting parameters
 from config import Pulsed_Zero_Time_Offset
 from config import Pulse_Period_ns
 from config import Pfit1
+from config import Pulse_Peaks
 
 # Plotting Info. Dicts
 from Functions.plotting_config import PExp
 
-def g2Pulsed(MDATA, BDATA):
+def g2Pulsed(MDATA, BDATA, Figures, TxtDict, blinking):
     print("g2 Pulsed measurement selected proceeding with normalization")
     print("and fitting.")
     print("="*60)
 
-    # Defining the Figures array - this along with a dict of all important info. will be returned
-    Figures = MDATA['figures']
+    # Checks to make sure sync rate, input rate, and bin width are defined from measurement mode
+    if MDATA['mode'] == 'dat':
+        raise ValueError('ERROR. Improper measurement mode selected for g2 Pulsed measurement.')
 
     # Defining all important variables and arrays from Dict of the measurement and background data
     Mcounts = MDATA['photon_counts']
     Mbins = MDATA['hist_bins']
     Mresolution = MDATA['resolution']
 
-    """# Checks to make sure sync rate, input rate, and bin width are defined from measurement mode
-    if MDATA['mode'] == 'T2' or MDATA['mode'] == 'T3':
-        raise ValueError('ERROR. Improper measurement mode selected for g2 Pulsed measurement.')
-    
-    # Defining important params specific to T2 and T3 mode
     sync_rate = MDATA['sync_rate']
     input_rate = MDATA['input_rate']
-    bin_width = MDATA['bin_width']
+    binsize_ns = MDATA['bin_width_ns']
+    Mduration_s = MDATA['acquisition_time_s'] 
 
-    # Normalizing and trimming counts then fixing length of time array
-    Ncounts = Ng2(counts, 1, Mduration, 1, sync_rate, input_rate, binsize)
-    NTcounts, index = threshold_trim_function(Ncounts, trimming_threshold)
-    time = bins[:index]"""
+    print("Duration:", Mduration_s)
+    print("Sync rate:", sync_rate)
+    print("input rate:", input_rate)
 
-    sync_rate = 'N/A'
-    input_rate = 'N/A'
-    bin_width = 'N/A'
+    if blinking == True:
+        Mcounts = MDATA['filtered_counts']
+        Mbins = MDATA['filtered_bins']
 
     # - - - - - - - - - - - - - - -
     #      Fitting and Figures
@@ -71,14 +67,21 @@ def g2Pulsed(MDATA, BDATA):
 
     # Trimming the data - this is different than the lifetime trim (based on a decay)
     # this trim is manually determined by the user in config file
-    Mcounts = Mcounts[:trimming_threshold]
-    time = Mbins[:trimming_threshold]
+    if trimming == True:
+        Mcounts = Mcounts[:trimming_threshold]
+        Mbins = Mbins[:trimming_threshold]
 
-    y0 = np.average(Mcounts)
-    Pfit1.insert(0, y0)
-    Pfit1.insert(0, Pulse_Period_ns)
+    Mcounts = Ng2(Mcounts, 0, Mduration_s, 1, sync_rate, input_rate, binsize_ns)
 
-    Pfit1_dict = FitPulsed(Mcounts, time, Pfit1, Pulsed_Zero_Time_Offset)
+    print("MAXIMUM VAL:", max(Mcounts))
+
+    Figures.append(normPlot(Mbins, Mcounts))
+
+    print("FINISHED PLOTTING NORMALIZATION PLOT")
+
+    Pfit1_dict = FitPulsed(Mcounts, Mbins, Pfit1, Pulsed_Zero_Time_Offset, Pulse_Peaks)
+
+    print("FINISHED FITTING DATA")
 
     fitted_curve = Pfit1_dict['fitted curve']
     residuals = Pfit1_dict['residuals']
@@ -90,24 +93,24 @@ def g2Pulsed(MDATA, BDATA):
     print("")
     print("="*60)
 
-    Figures.append(plots('g2 Pulsed Fit', time, Mcounts, fitted_curve, residuals))
+    Figures.append(plots('g2 Pulsed Fit', Mbins, Mcounts, fitted_curve, residuals))
 
     # Creating and defining the dict. that will store all important values to be saved in the
     # txt file output
-    TxtDict = {
-        # General params
-        'resolution': Mresolution,
-        'sync_rate': sync_rate,
-        'input_rate': input_rate,
-        'bin_width': bin_width,
-        # General fit model array of params in order
-        'model_params': ['A₁', 'τ₁', 'A₂', 'τ₂', 'R', 'τ0', 'Number of Peaks'],
-        # Fitting params
-        'model': 'g2 Pulsed',
-        'fit_params': Pfit1_dict['parameters'],
-        'fit_params_errors': Pfit1_dict['errors'],
-        'g2(0)': Pfit1_dict['g2(0)'],
-        'g2_fit_period': Pfit1_dict['g2 fit period']
-    }
+    # General params
+    TxtDict['resolution'] = Mresolution
+    TxtDict['sync_rate'] = sync_rate
+    TxtDict['input_rate'] = input_rate
+    TxtDict['bin_width'] = binsize_ns
+    # General fit model array of params in order
+    TxtDict['model_params'] = ['Pulse Period', 'y0', 'A₁', 'τ₁', 'A₂', 'τ₂', 'R', 'τ0', 'Number of Peaks']
+    # Fitting params
+    TxtDict['model'] = 'g2 Pulsed'
+    TxtDict['fit_params'] = Pfit1_dict['parameters']
+    TxtDict['fit_params_errors'] = Pfit1_dict['errors']
+    TxtDict['g2(0)'] = Pfit1_dict['g2(0)']
+    TxtDict['g2_fit_period'] = Pfit1_dict['g2 fit period']
+
+    print("FINISHED SAVING OUTPUTS TO DICTS - LEAVING g2 PULSED file")
 
     return Figures, TxtDict

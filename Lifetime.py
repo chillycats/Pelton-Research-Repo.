@@ -24,39 +24,45 @@ from Functions.PTU_Plotting import plots, comparison_plot, rawPlot
 
 from config import MeasurementType, trimming_threshold
 from config import Bfilepath, Bduration
-from config import bin_width_ps, time_window_ns
-
+from config import bin_width_ps
 # Lifetime fitting parameters
 from config import LNumFits
-from config import Lfit1, Lfit2, Lfit3
+from config import Lfit1, Lfit2, Lfit3, OOLfit
 from config import Generic_Lifetime
 
 # Plotting Info. Dicts
 from Functions.plotting_config import LExp, LBiExp, LTriExp
 
-def Lifetime(MDATA, BDATA):
+def Lifetime(MDATA, BDATA, Figures, TxtDict, blinking):
+    global LNumFits, Lfit1
+
     print("Lifetime measurement selected proceeding with normalization")
     print("and fitting.")
     print("="*60)
-
-    # Defining the Figures array - this along with a dict of all important info. will be returned
-    Figures = MDATA['figures']
 
     # Defining all important variables and arrays from Dict of the measurement and background data
     Mcounts = MDATA['photon_counts']
     Mbins = MDATA['hist_bins']
     Mresolution = MDATA['resolution']
 
-    # Defining special params specific to T2 and T3 mode
+    if blinking == True:
+        Mcounts = MDATA['filtered_counts']
+        Mbins = MDATA['filtered_bins']
+        LNumFits = 1
+        Lfit1 = OOLfit
+
+    """# Defining special params specific to T2 and T3 mode
     if MDATA['mode'] == 'T2' or MDATA['mode'] == 'T3':
         sync_rate = MDATA['sync_rate']
         input_rate = MDATA['input_rate']
-        bin_width = MDATA['bin_width']
+        bin_width = MDATA['bin_width']"""
 
     # Normalizing and trimming counts then fixing len time array
     Ncounts = NLifetime(Mcounts, 0, 1)
     NTcounts, index = threshold_trim_function(Ncounts, trimming_threshold)
     time = Mbins[:index]
+
+    Figures.append(rawPlot(time, NTcounts))
 
     # - - - - - - - - - - - - - - -
     #      Fitting and Figures
@@ -66,12 +72,32 @@ def Lifetime(MDATA, BDATA):
         Lfit1_dict = FitLifetime(NTcounts, time, Lfit1)
         Figures.append(plots(Lfit1_dict['model_type'], time, NTcounts, Lfit1_dict['normalized_fit'], Lfit1_dict['residuals']))
         
+        # Place holder variables
+        Lfit2_dict = {
+            'model_type': 'N/A',
+            'parameters': 'N/A',
+            'errors': 'N/A'
+        }
+
+        Lfit3_dict = {
+            'model_type': 'N/A',
+            'parameters': 'N/A',
+            'errors': 'N/A'
+        }
+
     # Two fits chosen - adds a comparison plot figure
     elif LNumFits == 2:
         Lfit1_dict = FitLifetime(NTcounts, time, Lfit1)
         Figures.append(plots(Lfit1_dict['model_type'], time, NTcounts, Lfit1_dict['normalized_fit'], Lfit1_dict['residuals']))
         Lfit2_dict = FitLifetime(NTcounts, time, Lfit2)
         Figures.append(plots(Lfit2_dict['model_type'], time, NTcounts, Lfit2_dict['normalized_fit'], Lfit2_dict['residuals']))
+        
+        # Place holder variables
+        Lfit3_dict = {
+            'model_type': 'N/A',
+            'parameters': 'N/A',
+            'errors': 'N/A'
+        }
         
         Figures.append(comparison_plot(2, time, NTcounts, Lfit1_dict['model_type'], Lfit1_dict['normalized_fit'], Lfit2_dict['model_type'], Lfit2_dict['normalized_fit'], 1, 1))
         
@@ -86,25 +112,43 @@ def Lifetime(MDATA, BDATA):
 
         Figures.append(comparison_plot(3, time, NTcounts, Lfit1_dict['model_type'], Lfit1_dict['normalized_fit'], Lfit2_dict['model_type'], Lfit2_dict['normalized_fit'], Lfit3_dict['model_type'], Lfit3_dict['normalized_fit']))
 
-    # Creating and defining the dict. that will store all important values to be saved in the
+    # Defining new keys for the dict. that will store all important values to be saved in the
     # txt file output
-    TxtDict = {
-        'resolution': Mresolution,
-        'num_of_fits': LNumFits,
+    if blinking == True:
+        TxtDict['blinking_lifetime_fit'] = 'True'
+        TxtDict['blinking_resolution'] = Mresolution
+        TxtDict['blinking_num_of_fits'] = LNumFits
         # General fit model array of params in order
-        'model_params': ['A₁', 'τ₁', 'A₂', 'τ₂', 'A₃', 'τ₃'],
+        TxtDict['blinking_model_params'] = ['A₁', 'τ₁', 'A₂', 'τ₂', 'A₃', 'τ₃']
         # Lifetime fit 1 
-        'lifetime_model1': Lfit1_dict['model_type'],
-        'fit1_params': Lfit1_dict['parameters'],
-        'fit1_params_er': Lfit1_dict['errors'],
+        TxtDict['blinking_lifetime_model1'] = Lfit1_dict['model_type']
+        TxtDict['blinking_fit1_params'] = Lfit1_dict['parameters']
+        TxtDict['blinking_fit1_params_er'] = Lfit1_dict['errors']
         # Lifetime fit 2
-        'lifetime_model2': Lfit2_dict['model_type'],
-        'fit2_params': Lfit2_dict['parameters'],
-        'fit2_params_er': Lfit2_dict['errors'],
+        TxtDict['blinking_lifetime_model2'] = Lfit2_dict['model_type']
+        TxtDict['blinking_fit2_params'] = Lfit2_dict['parameters']
+        TxtDict['blinking_fit2_params_er'] = Lfit2_dict['errors']
         # Lifetime fit 3
-        'lifetime_model3': Lfit3_dict['model_type'],
-        'fit3_params': Lfit3_dict['parameters'],
-        'fit3_params_er': Lfit3_dict['errors'],
-    }
+        TxtDict['blinking_lifetime_model3'] =  Lfit3_dict['model_type']
+        TxtDict['blinking_fit3_params'] = Lfit3_dict['parameters']
+        TxtDict['blinking_fit3_params_er'] = Lfit3_dict['errors']
+    else:
+        TxtDict['blinking_lifetime_fit'] = 'False'
+        TxtDict['resolution'] = Mresolution
+        TxtDict['num_of_fits'] = LNumFits
+        # General fit model array of params in order
+        TxtDict['model_params'] = ['A₁', 'τ₁', 'A₂', 'τ₂', 'A₃', 'τ₃']
+        # Lifetime fit 1 
+        TxtDict['lifetime_model1'] = Lfit1_dict['model_type']
+        TxtDict['fit1_params'] = Lfit1_dict['parameters']
+        TxtDict['fit1_params_er'] = Lfit1_dict['errors']
+        # Lifetime fit 2
+        TxtDict['lifetime_model2'] = Lfit2_dict['model_type']
+        TxtDict['fit2_params'] = Lfit2_dict['parameters']
+        TxtDict['fit2_params_er'] = Lfit2_dict['errors']
+        # Lifetime fit 3
+        TxtDict['lifetime_model3'] =  Lfit3_dict['model_type']
+        TxtDict['fit3_params'] = Lfit3_dict['parameters']
+        TxtDict['fit3_params_er'] = Lfit3_dict['errors']
 
     return Figures, TxtDict
